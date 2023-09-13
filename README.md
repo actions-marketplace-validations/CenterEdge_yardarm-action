@@ -5,9 +5,9 @@ Contains a GitHub action for the OpenAPI 3 SDK 3 generator, Yardarm
 ```yaml
 - uses: CenterEdge/yardarm-action@v1
   with:
-  yardarm: 0.3.x
-  dotnet-version: 6.0.x
-  args: generate -i my-spec.yaml -n MySpec -v 1.0.0 -o output/directory/ -x Yardarm.NewtonsoftJson Yardarm.MicrosoftExtensionsHttp
+    yardarm: 0.3.x
+    dotnet-version: 6.0.x
+    args: generate -i my-spec.yaml -n MySpec -v 1.0.0 -o output/directory/ -x Yardarm.NewtonsoftJson Yardarm.MicrosoftExtensionsHttp
 ```
 
 ## Inputs
