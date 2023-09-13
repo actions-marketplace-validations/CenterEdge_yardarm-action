@@ -1,0 +1,91 @@
+name: yardarm-action
+description: Interact with the Yardarm Open API 3 SDK generator in GitHub actions
+
+inputs:
+  yardarm:
+    description: The version of yardarm to use, eg 0.3.x to match against the latest 0.3 version, 0.3.4, or 'latest' for latest
+    required: false
+    default: latest
+  dotnet-version:
+    description: The .NET SDK version to setup
+    required: false
+    default: 6.0.x
+  pre-release:
+    description: Toggle searching pre-release versions
+    required: false
+    default: "false"
+  args:
+    description: yardarm arguments
+    required: true
+    default: generate help
+
+runs:
+  using: composite
+  steps:
+
+  - uses: actions/setup-dotnet@v3
+    with:
+      dotnet-version: ${{ inputs.dotnet-version }}
+
+  - id: search
+    run: |
+      search=""
+      if [[ "${{ inputs.pre-release }}" == "false" ]]; then
+        search=$(dotnet tool search Yardarm.CommandLine --take 100 --detail)
+      else
+        search=$(dotnet tool search Yardarm.CommandLine --take 100 --detail --prerelease)
+      fi
+
+      latest_version=$(echo "$search" | awk '/Latest Version:/ {print $NF}')
+      parsed_versions=$(echo "$search" | awk '/Versions:/ {flag=1; next} /Latest Version:/ {flag=0} flag {print $1}')
+
+      echo "latest="$latest_version"" >> "$GITHUB_OUTPUT"
+      echo "versions="$parsed_versions"" >> "$GITHUB_OUTPUT"
+
+    shell: bash
+
+  - id: parse
+    run: |
+      latest_version="${{ steps.search.outputs.latest }}"
+      input_version="${{ inputs.yardarm }}"
+
+      read -ra versions <<< "${{ steps.search.outputs.versions }}"
+
+      if [[ "$input_version" == "latest" ]]; then
+          echo "version="$latest_version"" >> "$GITHUB_OUTPUT"
+          exit 0
+      fi
+
+      for version in "${versions[@]}"; do
+        if [[ $version == "$input_version" ]]; then
+          echo "version="$version"" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+      done
+
+      regex=$(echo $input_version | sed 's/\./\\./g' | sed 's/x/./g')
+      matched_versions=()
+
+      for version in "${versions[@]}"; do
+        if [[ $version =~ ^$regex$ ]]; then
+          matched_versions+=($version)
+        fi
+      done
+
+      if [ ${#matched_versions[@]} -eq 0 ]; then
+        echo "Failed to find a matching version with input ${{ inputs.yardarm }}"
+        exit 1
+      else
+        echo "Matching version(s) for '$input_version':"
+        printf '%s\n' "${matched_versions[@]}"
+
+        highest_version=$(printf '%s\n' "${matched_versions[@]}" | sort -rV | head -n 1)
+        echo "version="$highest_version"" >> "$GITHUB_OUTPUT"
+      fi
+    shell: bash
+
+  - run: dotnet tool install --global Yardarm.CommandLine --version ${{ steps.parse.outputs.version }}
+    shell: bash
+
+  - run: yardarm ${{ inputs.args }}
+    shell: bash
