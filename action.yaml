@@ -1,5 +1,8 @@
 name: yardarm-action
 description: Interact with the Yardarm Open API 3 SDK generator in GitHub actions
+branding:
+  icon: 'shopping-bag'
+  color: 'blue'
 
 inputs:
   yardarm:
